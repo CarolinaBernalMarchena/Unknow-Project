@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ficha de artista — Pokémon TCG</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#E3350D">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ficha artista">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF6DE;
+    --surface:#FFFFFF;
+    --ink:#20203A;
+    --ink-soft:#6B6455;
+    --accent:#E3350D;
+    --accent-dark:#B82A0A;
+    --accent-soft:#FCE0D5;
+    --blue:#2A75BB;
+    --blue-soft:#DCEBF7;
+    --gold:#FFCB05;
+    --gold-soft:#FFF3C2;
+    --gold-ink:#8A6400;
+    --line:#F0DFA8;
+    --brick:#8C2F2F;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    padding-bottom:84px;
+  }
+  header{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--bg);
+    padding:18px 16px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .energy-bar{
+    height:5px;
+    width:100%;
+    background:linear-gradient(90deg, var(--accent) 0%, var(--accent) 33%, var(--gold) 33%, var(--gold) 66%, var(--blue) 66%, var(--blue) 100%);
+  }
+  h1{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:1.6rem;
+    margin:0 0 2px;
+    letter-spacing:-0.01em;
+    color:var(--accent-dark);
+  }
+  .subtitle{
+    color:var(--ink-soft);
+    font-size:0.85rem;
+    margin:0 0 14px;
+    line-height:1.4;
+  }
+  form.search{
+    display:flex;
+    gap:8px;
+  }
+  input[type="text"]{
+    flex:1;
+    font-size:1rem;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--surface);
+    color:var(--ink);
+    font-family:inherit;
+  }
+  input[type="text"]:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#fff;
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:0.95rem;
+    padding:0 18px;
+    border-radius:var(--radius);
+    box-shadow:0 3px 0 var(--accent-dark);
+  }
+  .btn-primary:disabled{opacity:0.5;box-shadow:none;}
+  .btn-primary:active{transform:translateY(2px);box-shadow:0 1px 0 var(--accent-dark);}
+
+  .status{
+    padding:14px 16px;
+    color:var(--ink-soft);
+    font-size:0.9rem;
+  }
+  .status.error{color:var(--brick);}
+
+  .toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 16px 4px;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+  }
+  .toolbar button{
+    background:none;
+    color:var(--accent);
+    font-weight:600;
+    font-size:0.82rem;
+    padding:4px;
+  }
+
+  .filters{
+    padding:12px 16px 0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .chip-row{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+  }
+  .chip{
+    flex-shrink:0;
+    font-size:0.82rem;
+    font-weight:500;
+    padding:7px 13px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+  }
+  .chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+    font-weight:600;
+  }
+  .fullart-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+  }
+  .fullart-toggle input{
+    width:18px;
+    height:18px;
+    accent-color:var(--gold);
+  }
+  .fullart-note{
+    font-size:0.74rem;
+    color:var(--ink-soft);
+    line-height:1.4;
+  }
+  .badge.fullart{
+    background:linear-gradient(90deg, #FFD86B, #FF9AD8, #8CC7FF, #FFD86B);
+    background-size:300% 100%;
+    animation:holo-shift 3s linear infinite;
+    color:#3A2A00;
+  }
+  @keyframes holo-shift{
+    0%{background-position:0% 50%;}
+    100%{background-position:300% 50%;}
+  }
+
+  ul.results{
+    list-style:none;
+    margin:0;
+    padding:4px 12px 8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  li.card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-left:5px solid var(--blue);
+    border-radius:var(--radius);
+    padding:10px 12px;
+  }
+  li.card.type-pokemon{border-left-color:var(--accent);}
+  li.card.type-trainer{border-left-color:var(--blue);}
+  li.card.type-energy{border-left-color:#3F9142;}
+  li.card img{
+    width:56px;
+    height:78px;
+    object-fit:cover;
+    border-radius:6px;
+    background:var(--line);
+    flex-shrink:0;
+    box-shadow:0 1px 4px rgba(0,0,0,0.18);
+  }
+  .card-img-placeholder{
+    width:56px;
+    height:78px;
+    border-radius:6px;
+    background:linear-gradient(135deg, var(--gold-soft), var(--blue-soft));
+    flex-shrink:0;
+  }
+  .card-info{
+    flex:1;
+    min-width:0;
+  }
+  .card-name{
+    font-weight:600;
+    font-size:0.97rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .card-meta{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .badge{
+    display:inline-block;
+    background:var(--gold-soft);
+    color:var(--gold);
+    font-size:0.72rem;
+    font-weight:600;
+    padding:1px 7px;
+    border-radius:20px;
+    margin-left:6px;
+  }
+  input[type="checkbox"]{
+    width:22px;
+    height:22px;
+    flex-shrink:0;
+    accent-color:var(--accent);
+  }
+
+  footer{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    padding:12px 16px;
+    display:flex;
+    justify-content:center;
+  }
+  .footer-inner{
+    width:100%;
+    max-width:480px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .count{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+  }
+  .count strong{color:var(--ink);}
+
+  dialog{
+    border:none;
+    border-radius:14px;
+    padding:0;
+    width:calc(100% - 40px);
+    max-width:420px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.25);
+  }
+  dialog::backdrop{background:rgba(33,32,28,0.5);}
+  .dialog-body{padding:20px;}
+  .dialog-body h2{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.2rem;
+    margin:0 0 8px;
+    color:var(--accent-dark);
+  }
+  .dialog-body p{
+    font-size:0.87rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    margin:0 0 12px;
+  }
+  textarea{
+    width:100%;
+    height:160px;
+    font-family:'IBM Plex Sans',monospace;
+    font-size:0.85rem;
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    resize:vertical;
+    margin-bottom:12px;
+  }
+  .dialog-actions{
+    display:flex;
+    gap:8px;
+  }
+  .btn-secondary{
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-weight:600;
+    font-size:0.9rem;
+    padding:10px 16px;
+    border-radius:var(--radius);
+    flex:1;
+  }
+  .copied-flash{
+    color:var(--accent);
+    font-size:0.8rem;
+    font-weight:600;
+    margin-top:6px;
+    min-height:1.2em;
+  }
+  .empty{
+    padding:40px 24px;
+    text-align:center;
+    color:var(--ink-soft);
+  }
+  .empty strong{display:block;color:var(--accent-dark);font-size:1.05rem;margin-bottom:4px;font-family:'Fredoka',sans-serif;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="energy-bar"></div>
+<div class="app">
+  <header>
+    <h1>Ficha de artista</h1>
+    <p class="subtitle">Busca por ilustrador y saca la lista de Pokémon únicos, sin reediciones repetidas, lista para importar en tu wantslist de Cardmarket.</p>
+    <form class="search" id="searchForm">
+      <input type="text" id="artistInput" placeholder="Nombre del ilustrador, ej. Yuka Morii" autocomplete="off">
+      <button type="submit" class="btn-primary" id="searchBtn">Buscar</button>
+    </form>
+    <details style="margin-top:10px;">
+      <summary style="font-size:0.8rem;color:var(--ink-soft);cursor:pointer;">Clave API opcional (recomendable, evita errores 500)</summary>
+      <div style="margin-top:8px;">
+        <input type="text" id="apiKeyInput" placeholder="Pega aquí tu X-Api-Key de dev.pokemontcg.io" autocomplete="off" style="width:100%;">
+        <p style="font-size:0.74rem;color:var(--ink-soft);margin:6px 0 0;line-height:1.4;">
+          Gratis en <strong>dev.pokemontcg.io</strong>. Sin clave, la API está muy limitada y a veces devuelve error 500. La clave no se guarda al cerrar la página: si no quieres pegarla cada vez, puedes escribirla tú mismo en este archivo, dentro de la variable <code>HARDCODED_API_KEY</code> del código.
+        </p>
+      </div>
+    </details>
+  </header>
+
+  <div id="status" class="status" hidden></div>
+
+  <div class="filters" id="filters" hidden>
+    <div class="chip-row" id="supertypeChips">
+      <button type="button" class="chip active" data-supertype="Todos">Todos</button>
+      <button type="button" class="chip" data-supertype="Pokémon">Pokémon</button>
+      <button type="button" class="chip" data-supertype="Trainer">Entrenador</button>
+      <button type="button" class="chip" data-supertype="Energy">Energía</button>
+    </div>
+    <label class="fullart-toggle">
+      <input type="checkbox" id="fullArtOnly">
+      Mostrar solo posibles full art
+    </label>
+    <p class="fullart-note">* La API no indica "full art" directamente. Lo aproximamos por la rareza (Ultra, Secreta, Rainbow, Illustration Rare…) y por si el número de carta supera el total del set. No es 100% exacto, revisa siempre la imagen.</p>
+  </div>
+
+  <div id="toolbar" class="toolbar" hidden>
+    <span id="resultSummary"></span>
+    <button type="button" id="toggleAll">Deseleccionar todo</button>
+  </div>
+
+  <ul class="results" id="resultsList"></ul>
+
+  <div id="emptyState" class="empty" hidden>
+    <strong>Sin resultados todavía</strong>
+    Escribe el nombre de un ilustrador de Pokémon TCG y pulsa Buscar.
+  </div>
+</div>
+
+<footer id="footerBar" hidden>
+  <div class="footer-inner">
+    <span class="count"><strong id="selCount">0</strong> seleccionadas</span>
+    <button type="button" class="btn-primary" id="exportBtn">Generar lista</button>
+  </div>
+</footer>
+
+<dialog id="exportDialog">
+  <div class="dialog-body">
+    <h2>Lista para Cardmarket</h2>
+    <p>Copia este texto y pégalo en Cardmarket, dentro de tu cuenta → Wantslist → Importar, para añadirlos todos de golpe.</p>
+    <p style="margin-top:-8px;">Si tenías marcadas la versión normal y la full art del mismo Pokémon, aquí solo aparece el nombre una vez (Cardmarket no distingue por nombre): añade la full art a mano desde la ficha del producto si quieres esa edición en concreto.</p>
+    <textarea id="exportText" readonly></textarea>
+    <div class="copied-flash" id="copiedFlash"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" id="copyBtn">Copiar</button>
+      <button type="button" class="btn-secondary" id="closeDialog">Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const API_BASE = 'https://api.pokemontcg.io/v2/cards';
+const form = document.getElementById('searchForm');
+const artistInput = document.getElementById('artistInput');
+const searchBtn = document.getElementById('searchBtn');
+const statusEl = document.getElementById('status');
+const toolbar = document.getElementById('toolbar');
+const resultSummary = document.getElementById('resultSummary');
+const resultsList = document.getElementById('resultsList');
+const emptyState = document.getElementById('emptyState');
+const footerBar = document.getElementById('footerBar');
+const selCountEl = document.getElementById('selCount');
+const toggleAllBtn = document.getElementById('toggleAll');
+const exportBtn = document.getElementById('exportBtn');
+const exportDialog = document.getElementById('exportDialog');
+const exportText = document.getElementById('exportText');
+const copyBtn = document.getElementById('copyBtn');
+const closeDialog = document.getElementById('closeDialog');
+const copiedFlash = document.getElementById('copiedFlash');
+const filtersEl = document.getElementById('filters');
+const supertypeChips = document.getElementById('supertypeChips');
+const fullArtOnlyCheckbox = document.getElementById('fullArtOnly');
+const apiKeyInput = document.getElementById('apiKeyInput');
+
+// Si prefieres no pegar la clave cada vez, puedes escribirla aquí directamente (es tu copia local del archivo):
+const HARDCODED_API_KEY = '';
+
+let rawCards = [];
+let uniqueCards = [];
+let activeSupertype = 'Todos';
+
+function setStatus(msg, isError){
+  if(!msg){ statusEl.hidden = true; return; }
+  statusEl.hidden = false;
+  statusEl.textContent = msg;
+  statusEl.className = 'status' + (isError ? ' error' : '');
+}
+
+async function fetchAllCardsByArtist(artist){
+  let all = [];
+  let page = 1;
+  const pageSize = 100;
+  let apiKey = (apiKeyInput.value || HARDCODED_API_KEY || '').trim();
+  const isLocalFile = location.protocol === 'file:';
+  let warnedAboutKeyDrop = false;
+  while(true){
+    const q = encodeURIComponent('artist:"' + artist + '"');
+    const url = `${API_BASE}?q=${q}&pageSize=${pageSize}&page=${page}&orderBy=name`;
+    const headers = apiKey ? { 'X-Api-Key': apiKey } : {};
+
+    let res, lastError;
+    for(let attempt = 1; attempt <= 3; attempt++){
+      try{
+        res = await fetch(url, { headers });
+        if(res.ok) break;
+        if(res.status === 429){
+          throw new Error('La API te ha limitado por demasiadas peticiones seguidas. Espera un minuto y vuelve a intentarlo' + (apiKey ? '.' : ', o añade una clave API gratuita para tener un límite más alto.'));
+        }
+        if(res.status >= 500 && attempt < 3){
+          await new Promise(r => setTimeout(r, attempt * 800)); // pequeña espera antes de reintentar
+          continue;
+        }
+        const body = await res.text().catch(() => '');
+        throw new Error(`La API respondió con error ${res.status}.` + (apiKey ? '' : ' Prueba a añadir una clave API gratuita de dev.pokemontcg.io: sin clave esta API es muy inestable ahora mismo.') + (body ? ` Detalle: ${body.slice(0,200)}` : ''));
+      }catch(err){
+        lastError = err;
+        // "Failed to fetch" = TypeError de red/CORS, no un error de la API con código de estado.
+        const isNetworkFailure = err instanceof TypeError;
+        if(isNetworkFailure && apiKey && isLocalFile && !warnedAboutKeyDrop){
+          // Probablemente CORS: al abrir el archivo como file://, añadir la cabecera de la clave
+          // hace que el navegador bloquee la petición antes de que llegue a la API.
+          // Reintentamos automáticamente sin la clave para que la búsqueda no se quede en nada.
+          warnedAboutKeyDrop = true;
+          apiKey = '';
+          headers['X-Api-Key'] && delete headers['X-Api-Key'];
+          attempt = 0; // reinicia los intentos para esta página, ahora sin clave
+          continue;
+        }
+        if(isNetworkFailure && attempt === 3){
+          throw new Error('No se pudo conectar con la API ("Failed to fetch"). Suele ser un bloqueo de CORS o falta de conexión. Si estás usando una clave API desde el archivo abierto en local, prueba sin clave, o aloja el archivo en un servidor con https.');
+        }
+        if(err.message && (err.message.includes('límite') || err.message.includes('inestable'))) throw err;
+        if(attempt === 3) throw err;
+      }
+    }
+    if(!res || !res.ok){
+      throw lastError || new Error('No se pudo contactar con la API.');
+    }
+    const json = await res.json();
+    const data = json.data || [];
+    all = all.concat(data);
+    if(data.length < pageSize) break;
+    page += 1;
+    if(page > 15) break; // salvaguarda razonable
+  }
+  return { cards: all, keyDropped: warnedAboutKeyDrop };
+}
+
+const FULLART_RARITY_HINTS = ['ultra','secret','rainbow','hyper','illustration','amazing','trainer gallery','shiny'];
+
+function looksLikeFullArt(c){
+  const rarity = (c.rarity || '').toLowerCase();
+  if(FULLART_RARITY_HINTS.some(hint => rarity.includes(hint))) return true;
+  const printedTotal = c.set && c.set.printedTotal;
+  const numMatch = (c.number || '').match(/\d+/);
+  if(printedTotal && numMatch){
+    const num = parseInt(numMatch[0], 10);
+    if(num > printedTotal) return true;
+  }
+  return false;
+}
+
+function dedupeByName(cards){
+  const map = new Map();
+  for(const c of cards){
+    const fullArt = looksLikeFullArt(c);
+    const key = c.name + '|' + (fullArt ? 'fa' : 'normal');
+    if(!map.has(key)){
+      map.set(key, {
+        name: c.name,
+        image: c.images && c.images.small,
+        setName: c.set && c.set.name,
+        supertype: c.supertype,
+        hasFullArt: fullArt,
+        reprintSets: [c.set ? c.set.name : '']
+      });
+    } else {
+      const entry = map.get(key);
+      if(c.set && c.set.name && !entry.reprintSets.includes(c.set.name)){
+        entry.reprintSets.push(c.set.name);
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a,b) => {
+    const byName = a.name.localeCompare(b.name, 'es');
+    if(byName !== 0) return byName;
+    return a.hasFullArt === b.hasFullArt ? 0 : (a.hasFullArt ? 1 : -1);
+  });
+}
+
+function applyFilters(){
+  let filtered = rawCards;
+  if(activeSupertype !== 'Todos'){
+    filtered = filtered.filter(c => c.supertype === activeSupertype);
+  }
+  uniqueCards = dedupeByName(filtered);
+  if(fullArtOnlyCheckbox.checked){
+    uniqueCards = uniqueCards.filter(c => c.hasFullArt);
+  }
+  renderResults();
+}
+
+supertypeChips.addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  activeSupertype = btn.dataset.supertype;
+  supertypeChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === btn));
+  applyFilters();
+});
+
+fullArtOnlyCheckbox.addEventListener('change', applyFilters);
+
+function renderResults(){
+  resultsList.innerHTML = '';
+  if(uniqueCards.length === 0){
+    toolbar.hidden = true;
+    footerBar.hidden = true;
+    emptyState.hidden = false;
+    emptyState.innerHTML = rawCards.length > 0
+      ? `<strong>Nada con este filtro</strong>Prueba a cambiar el tipo de carta o quitar el filtro de full art.`
+      : `<strong>No se encontraron cartas</strong>Revisa cómo está escrito el nombre del ilustrador (en inglés, tal y como aparece en el pie de la carta).`;
+    return;
+  }
+  emptyState.hidden = true;
+  toolbar.hidden = false;
+  footerBar.hidden = false;
+  resultSummary.textContent = uniqueCards.length + ' cartas únicas encontradas';
+
+  uniqueCards.forEach((card, idx) => {
+    const li = document.createElement('li');
+    const typeClass = card.supertype === 'Pokémon' ? 'type-pokemon'
+      : card.supertype === 'Trainer' ? 'type-trainer'
+      : card.supertype === 'Energy' ? 'type-energy' : '';
+    li.className = 'card ' + typeClass;
+    const reprintBadge = card.reprintSets.length > 1
+      ? `<span class="badge">${card.reprintSets.length} ediciones</span>`
+      : '';
+    const fullArtBadge = card.hasFullArt
+      ? `<span class="badge fullart">Full art*</span>`
+      : '';
+    li.innerHTML = `
+      ${card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>'}
+      <div class="card-info">
+        <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}</div>
+        <div class="card-meta">${card.setName || ''}</div>
+      </div>
+      <input type="checkbox" data-idx="${idx}" checked>
+    `;
+    resultsList.appendChild(li);
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount(){
+  const checked = resultsList.querySelectorAll('input[type="checkbox"]:checked').length;
+  selCountEl.textContent = checked;
+}
+
+resultsList.addEventListener('change', (e) => {
+  if(e.target.matches('input[type="checkbox"]')) updateSelectedCount();
+});
+
+toggleAllBtn.addEventListener('click', () => {
+  const boxes = resultsList.querySelectorAll('input[type="checkbox"]');
+  const anyChecked = Array.from(boxes).some(b => b.checked);
+  boxes.forEach(b => b.checked = !anyChecked);
+  toggleAllBtn.textContent = anyChecked ? 'Seleccionar todo' : 'Deseleccionar todo';
+  updateSelectedCount();
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const artist = artistInput.value.trim();
+  if(!artist) return;
+  searchBtn.disabled = true;
+  searchBtn.textContent = 'Buscando…';
+  setStatus('Consultando cartas de "' + artist + '"…');
+  filtersEl.hidden = true;
+  toolbar.hidden = true;
+  footerBar.hidden = true;
+  emptyState.hidden = true;
+  resultsList.innerHTML = '';
+  try{
+    const result = await fetchAllCardsByArtist(artist);
+    rawCards = result.cards;
+    activeSupertype = 'Todos';
+    supertypeChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.supertype === 'Todos'));
+    fullArtOnlyCheckbox.checked = false;
+    if(result.keyDropped){
+      setStatus('Nota: tu clave API no se pudo usar abriendo el archivo en local (bloqueo de CORS en file://), así que esta búsqueda se hizo sin ella. Aloja el archivo en un servidor con https para que la clave funcione.');
+    } else {
+      setStatus('');
+    }
+    if(rawCards.length > 0) filtersEl.hidden = false;
+    applyFilters();
+  }catch(err){
+    setStatus(err.message || 'Ha ocurrido un error al consultar la API.', true);
+  }finally{
+    searchBtn.disabled = false;
+    searchBtn.textContent = 'Buscar';
+  }
+});
+
+exportBtn.addEventListener('click', () => {
+  const boxes = resultsList.querySelectorAll('input[type="checkbox"]:checked');
+  const names = Array.from(boxes).map(b => uniqueCards[Number(b.dataset.idx)].name);
+  const uniqueNames = Array.from(new Set(names));
+  exportText.value = uniqueNames.join('\n');
+  copiedFlash.textContent = '';
+  exportDialog.showModal();
+});
+
+closeDialog.addEventListener('click', () => exportDialog.close());
+
+copyBtn.addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(exportText.value);
+    copiedFlash.textContent = 'Copiado ✓';
+  }catch(err){
+    exportText.select();
+    document.execCommand('copy');
+    copiedFlash.textContent = 'Copiado ✓';
+  }
+});
+
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
