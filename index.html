@@ -406,9 +406,8 @@
 
 <dialog id="exportDialog">
   <div class="dialog-body">
-    <h2>Lista para Cardmarket</h2>
-    <p>Copia este texto y pégalo en Cardmarket, dentro de tu cuenta → Wantslist → Importar, para añadirlos todos de golpe.</p>
-    <p style="margin-top:-8px;">Si tenías marcadas la versión normal y la full art del mismo Pokémon, aquí solo aparece el nombre una vez (Cardmarket no distingue por nombre): añade la full art a mano desde la ficha del producto si quieres esa edición en concreto.</p>
+    <h2>Tu lista de búsqueda</h2>
+    <p>Cada línea trae el nombre, la expansión y el número exacto de carta. Búscalos uno a uno en Cardmarket (por nombre + número) para encontrar la edición concreta — el importador masivo de wantslist solo busca por nombre y no distingue entre ediciones.</p>
     <textarea id="exportText" readonly></textarea>
     <div class="copied-flash" id="copiedFlash"></div>
     <div class="dialog-actions">
@@ -535,11 +534,15 @@ function dedupeByName(cards){
   for(const c of cards){
     const fullArt = looksLikeFullArt(c);
     const key = c.name + '|' + (fullArt ? 'fa' : 'normal');
+    const releaseDate = c.set && c.set.releaseDate; // 'YYYY/MM/DD'
     if(!map.has(key)){
       map.set(key, {
         name: c.name,
         image: c.images && c.images.small,
         setName: c.set && c.set.name,
+        number: c.number,
+        printedTotal: c.set && c.set.printedTotal,
+        releaseDate: releaseDate,
         supertype: c.supertype,
         hasFullArt: fullArt,
         reprintSets: [c.set ? c.set.name : '']
@@ -548,6 +551,14 @@ function dedupeByName(cards){
       const entry = map.get(key);
       if(c.set && c.set.name && !entry.reprintSets.includes(c.set.name)){
         entry.reprintSets.push(c.set.name);
+      }
+      // Si esta reedición es más antigua que la que teníamos guardada, la usamos como referencia
+      if(releaseDate && (!entry.releaseDate || releaseDate < entry.releaseDate)){
+        entry.releaseDate = releaseDate;
+        entry.setName = c.set && c.set.name;
+        entry.number = c.number;
+        entry.printedTotal = c.set && c.set.printedTotal;
+        entry.image = c.images && c.images.small;
       }
     }
   }
@@ -579,6 +590,12 @@ supertypeChips.addEventListener('click', (e) => {
 });
 
 fullArtOnlyCheckbox.addEventListener('change', applyFilters);
+
+function cardRef(card){
+  const num = card.number ? card.number : '?';
+  const total = card.printedTotal ? '/' + card.printedTotal : '';
+  return (card.setName || 'Set desconocido') + ' · Nº ' + num + total;
+}
 
 function renderResults(){
   resultsList.innerHTML = '';
@@ -612,7 +629,7 @@ function renderResults(){
       ${card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>'}
       <div class="card-info">
         <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}</div>
-        <div class="card-meta">${card.setName || ''}</div>
+        <div class="card-meta">${cardRef(card)}</div>
       </div>
       <input type="checkbox" data-idx="${idx}" checked>
     `;
@@ -673,9 +690,11 @@ form.addEventListener('submit', async (e) => {
 
 exportBtn.addEventListener('click', () => {
   const boxes = resultsList.querySelectorAll('input[type="checkbox"]:checked');
-  const names = Array.from(boxes).map(b => uniqueCards[Number(b.dataset.idx)].name);
-  const uniqueNames = Array.from(new Set(names));
-  exportText.value = uniqueNames.join('\n');
+  const lines = Array.from(boxes).map(b => {
+    const card = uniqueCards[Number(b.dataset.idx)];
+    return `${card.name} — ${cardRef(card)}`;
+  });
+  exportText.value = lines.join('\n');
   copiedFlash.textContent = '';
   exportDialog.showModal();
 });
