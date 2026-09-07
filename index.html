@@ -444,8 +444,12 @@
         <summary style="font-size:0.8rem;color:var(--ink-soft);cursor:pointer;">Clave API opcional (recomendable, evita errores 500)</summary>
         <div style="margin-top:8px;">
           <input type="text" id="apiKeyInput" placeholder="Pega aquí tu X-Api-Key de dev.pokemontcg.io" autocomplete="off" style="width:100%;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--ink-soft);margin-top:8px;">
+            <input type="checkbox" id="rememberKeyCheckbox" style="width:16px;height:16px;">
+            Recordar esta clave en este dispositivo
+          </label>
           <p style="font-size:0.74rem;color:var(--ink-soft);margin:6px 0 0;line-height:1.4;">
-            Gratis en <strong>dev.pokemontcg.io</strong>. Sin clave, la API está muy limitada y a veces devuelve error 500. La clave no se guarda al cerrar la página: si no quieres pegarla cada vez, puedes escribirla tú mismo en este archivo, dentro de la variable <code>HARDCODED_API_KEY</code> del código.
+            Gratis en <strong>dev.pokemontcg.io</strong>. Si marcas la casilla, la clave se guarda solo en el almacenamiento de este navegador (igual que tus listas de Quiero/Tengo) — nunca se sube a GitHub ni queda visible en el código. <strong>No escribas la clave directamente en este archivo</strong> si lo vas a subir a un repositorio público: quedaría visible para cualquiera.
           </p>
         </div>
       </details>
@@ -558,6 +562,7 @@ const filtersEl = document.getElementById('filters');
 const supertypeChips = document.getElementById('supertypeChips');
 const fullArtOnlyCheckbox = document.getElementById('fullArtOnly');
 const apiKeyInput = document.getElementById('apiKeyInput');
+const rememberKeyCheckbox = document.getElementById('rememberKeyCheckbox');
 const tabRow = document.getElementById('tabRow');
 const searchControls = document.getElementById('searchControls');
 const viewSearch = document.getElementById('viewSearch');
@@ -576,8 +581,28 @@ const addOwnedBtn = document.getElementById('addOwnedBtn');
 const exportWantsBtn = document.getElementById('exportWantsBtn');
 const exportOwnedBtn = document.getElementById('exportOwnedBtn');
 
-// Si prefieres no pegar la clave cada vez, puedes escribirla aquí directamente (es tu copia local del archivo):
-const HARDCODED_API_KEY = '';
+// Si prefieres no pegar la clave cada vez, marca "Recordar esta clave en este dispositivo":
+// se guarda solo en el localStorage de tu navegador (nunca se sube a ningún sitio).
+const LS_API_KEY = 'fichaArtista_apiKey_v1';
+{
+  const savedKey = localStorage.getItem(LS_API_KEY);
+  if(savedKey){
+    apiKeyInput.value = savedKey;
+    rememberKeyCheckbox.checked = true;
+  }
+}
+rememberKeyCheckbox.addEventListener('change', () => {
+  if(!rememberKeyCheckbox.checked){
+    localStorage.removeItem(LS_API_KEY);
+  } else if(apiKeyInput.value.trim()){
+    localStorage.setItem(LS_API_KEY, apiKeyInput.value.trim());
+  }
+});
+apiKeyInput.addEventListener('input', () => {
+  if(rememberKeyCheckbox.checked){
+    localStorage.setItem(LS_API_KEY, apiKeyInput.value.trim());
+  }
+});
 
 let rawCards = [];
 let uniqueCards = [];
@@ -662,7 +687,7 @@ async function fetchAllCardsByArtist(artist){
   let all = [];
   let page = 1;
   const pageSize = 100;
-  let apiKey = (apiKeyInput.value || HARDCODED_API_KEY || '').trim();
+  let apiKey = (apiKeyInput.value || '').trim();
   const isLocalFile = location.protocol === 'file:';
   let warnedAboutKeyDrop = false;
   while(true){
