@@ -27,6 +27,8 @@
     --gold:#FFCB05;
     --gold-soft:#FFF3C2;
     --gold-ink:#8A6400;
+    --green:#2F6F3E;
+    --green-soft:#DFF0D8;
     --line:#F0DFA8;
     --brick:#8C2F2F;
     --radius:14px;
@@ -54,7 +56,7 @@
     top:0;
     z-index:5;
     background:var(--bg);
-    padding:18px 16px 14px;
+    padding:18px 16px 0;
     border-bottom:1px solid var(--line);
   }
   .energy-bar{
@@ -65,17 +67,52 @@
   h1{
     font-family:'Fredoka',sans-serif;
     font-weight:700;
-    font-size:1.6rem;
+    font-size:1.5rem;
     margin:0 0 2px;
     letter-spacing:-0.01em;
     color:var(--accent-dark);
   }
   .subtitle{
     color:var(--ink-soft);
-    font-size:0.85rem;
-    margin:0 0 14px;
+    font-size:0.84rem;
+    margin:0 0 12px;
     line-height:1.4;
   }
+  .tab-row{
+    display:flex;
+    gap:6px;
+    padding-bottom:10px;
+  }
+  .tab-btn{
+    flex:1;
+    background:none;
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+    padding:9px 6px;
+    border-radius:var(--radius) var(--radius) 0 0;
+    border-bottom:3px solid transparent;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  .tab-btn.active{
+    color:var(--accent-dark);
+    border-bottom:3px solid var(--accent);
+    background:var(--surface);
+  }
+  .tab-count{
+    background:var(--line);
+    color:var(--ink);
+    font-size:0.68rem;
+    font-weight:700;
+    padding:1px 6px;
+    border-radius:20px;
+  }
+  .tab-btn.active .tab-count{background:var(--accent);color:#fff;}
+  #searchControls{padding-bottom:14px;}
   form.search{
     display:flex;
     gap:8px;
@@ -112,6 +149,23 @@
   .btn-primary:disabled{opacity:0.5;box-shadow:none;}
   .btn-primary:active{transform:translateY(2px);box-shadow:0 1px 0 var(--accent-dark);}
 
+  .btn-icon{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:var(--surface);
+    border:1px solid var(--line);
+    font-size:1.15rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--ink-soft);
+    flex-shrink:0;
+  }
+  .btn-icon:active{transform:scale(0.94);}
+  .btn-icon.wants-icon:hover{color:var(--accent);}
+  .btn-icon.owned-icon:hover{color:var(--green);}
+
   .status{
     padding:14px 16px;
     color:var(--ink-soft);
@@ -126,13 +180,23 @@
     padding:12px 16px 4px;
     font-size:0.82rem;
     color:var(--ink-soft);
+    gap:8px;
   }
-  .toolbar button{
+  .toolbar button.link-btn{
     background:none;
     color:var(--accent);
     font-weight:600;
     font-size:0.82rem;
     padding:4px;
+  }
+  .toolbar .btn-small{
+    background:var(--accent);
+    color:#fff;
+    font-weight:600;
+    font-size:0.8rem;
+    padding:6px 12px;
+    border-radius:20px;
+    flex-shrink:0;
   }
 
   .filters{
@@ -189,6 +253,8 @@
     0%{background-position:0% 50%;}
     100%{background-position:300% 50%;}
   }
+  .badge.owned{background:var(--green-soft);color:var(--green);}
+  .badge.wanted{background:var(--accent-soft);color:var(--accent-dark);}
 
   ul.results{
     list-style:none;
@@ -234,9 +300,10 @@
   .card-name{
     font-weight:600;
     font-size:0.97rem;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:4px;
   }
   .card-meta{
     font-size:0.78rem;
@@ -246,18 +313,25 @@
   .badge{
     display:inline-block;
     background:var(--gold-soft);
-    color:var(--gold);
-    font-size:0.72rem;
+    color:var(--gold-ink);
+    font-size:0.68rem;
     font-weight:600;
     padding:1px 7px;
     border-radius:20px;
-    margin-left:6px;
   }
   input[type="checkbox"]{
     width:22px;
     height:22px;
     flex-shrink:0;
     accent-color:var(--accent);
+  }
+  .remove-btn{
+    background:none;
+    color:var(--brick);
+    font-size:0.78rem;
+    font-weight:600;
+    padding:6px 8px;
+    flex-shrink:0;
   }
 
   footer{
@@ -277,13 +351,15 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:12px;
+    gap:10px;
   }
   .count{
-    font-size:0.85rem;
+    font-size:0.8rem;
     color:var(--ink-soft);
+    flex-shrink:1;
   }
   .count strong{color:var(--ink);}
+  .footer-actions{display:flex;gap:8px;align-items:center;}
 
   dialog{
     border:none;
@@ -345,6 +421,7 @@
     color:var(--ink-soft);
   }
   .empty strong{display:block;color:var(--accent-dark);font-size:1.05rem;margin-bottom:4px;font-family:'Fredoka',sans-serif;font-weight:600;}
+  .view[hidden]{display:none;}
 </style>
 </head>
 <body>
@@ -352,62 +429,102 @@
 <div class="app">
   <header>
     <h1>Ficha de artista</h1>
-    <p class="subtitle">Busca por ilustrador y saca la lista de Pokémon únicos, sin reediciones repetidas, lista para importar en tu wantslist de Cardmarket.</p>
-    <form class="search" id="searchForm">
-      <input type="text" id="artistInput" placeholder="Nombre del ilustrador, ej. Yuka Morii" autocomplete="off">
-      <button type="submit" class="btn-primary" id="searchBtn">Buscar</button>
-    </form>
-    <details style="margin-top:10px;">
-      <summary style="font-size:0.8rem;color:var(--ink-soft);cursor:pointer;">Clave API opcional (recomendable, evita errores 500)</summary>
-      <div style="margin-top:8px;">
-        <input type="text" id="apiKeyInput" placeholder="Pega aquí tu X-Api-Key de dev.pokemontcg.io" autocomplete="off" style="width:100%;">
-        <p style="font-size:0.74rem;color:var(--ink-soft);margin:6px 0 0;line-height:1.4;">
-          Gratis en <strong>dev.pokemontcg.io</strong>. Sin clave, la API está muy limitada y a veces devuelve error 500. La clave no se guarda al cerrar la página: si no quieres pegarla cada vez, puedes escribirla tú mismo en este archivo, dentro de la variable <code>HARDCODED_API_KEY</code> del código.
-        </p>
-      </div>
-    </details>
+    <p class="subtitle">Busca por ilustrador, guarda lo que quieres y lo que ya tienes — todo se queda guardado en este dispositivo.</p>
+    <nav class="tab-row" id="tabRow">
+      <button type="button" class="tab-btn active" data-view="search">🔍 Buscar</button>
+      <button type="button" class="tab-btn" data-view="wants">♥ Quiero <span class="tab-count" id="wantsCount">0</span></button>
+      <button type="button" class="tab-btn" data-view="owned">✓ Tengo <span class="tab-count" id="ownedCount">0</span></button>
+    </nav>
+    <div id="searchControls">
+      <form class="search" id="searchForm">
+        <input type="text" id="artistInput" placeholder="Nombre del ilustrador, ej. Yuka Morii" autocomplete="off">
+        <button type="submit" class="btn-primary" id="searchBtn">Buscar</button>
+      </form>
+      <details style="margin-top:10px;">
+        <summary style="font-size:0.8rem;color:var(--ink-soft);cursor:pointer;">Clave API opcional (recomendable, evita errores 500)</summary>
+        <div style="margin-top:8px;">
+          <input type="text" id="apiKeyInput" placeholder="Pega aquí tu X-Api-Key de dev.pokemontcg.io" autocomplete="off" style="width:100%;">
+          <p style="font-size:0.74rem;color:var(--ink-soft);margin:6px 0 0;line-height:1.4;">
+            Gratis en <strong>dev.pokemontcg.io</strong>. Sin clave, la API está muy limitada y a veces devuelve error 500. La clave no se guarda al cerrar la página: si no quieres pegarla cada vez, puedes escribirla tú mismo en este archivo, dentro de la variable <code>HARDCODED_API_KEY</code> del código.
+          </p>
+        </div>
+      </details>
+    </div>
   </header>
 
-  <div id="status" class="status" hidden></div>
+  <!-- VISTA: BUSCAR -->
+  <div class="view" id="viewSearch">
+    <div id="status" class="status" hidden></div>
 
-  <div class="filters" id="filters" hidden>
-    <div class="chip-row" id="supertypeChips">
-      <button type="button" class="chip active" data-supertype="Todos">Todos</button>
-      <button type="button" class="chip" data-supertype="Pokémon">Pokémon</button>
-      <button type="button" class="chip" data-supertype="Trainer">Entrenador</button>
-      <button type="button" class="chip" data-supertype="Energy">Energía</button>
+    <div class="filters" id="filters" hidden>
+      <div class="chip-row" id="supertypeChips">
+        <button type="button" class="chip active" data-supertype="Todos">Todos</button>
+        <button type="button" class="chip" data-supertype="Pokémon">Pokémon</button>
+        <button type="button" class="chip" data-supertype="Trainer">Entrenador</button>
+        <button type="button" class="chip" data-supertype="Energy">Energía</button>
+      </div>
+      <label class="fullart-toggle">
+        <input type="checkbox" id="fullArtOnly">
+        Mostrar solo posibles full art
+      </label>
+      <p class="fullart-note">* La API no indica "full art" directamente. Lo aproximamos por la rareza (Ultra, Secreta, Rainbow, Illustration Rare…) y por si el número de carta supera el total del set. No es 100% exacto, revisa siempre la imagen.</p>
     </div>
-    <label class="fullart-toggle">
-      <input type="checkbox" id="fullArtOnly">
-      Mostrar solo posibles full art
-    </label>
-    <p class="fullart-note">* La API no indica "full art" directamente. Lo aproximamos por la rareza (Ultra, Secreta, Rainbow, Illustration Rare…) y por si el número de carta supera el total del set. No es 100% exacto, revisa siempre la imagen.</p>
+
+    <div id="toolbar" class="toolbar" hidden>
+      <span id="resultSummary"></span>
+      <button type="button" class="link-btn" id="toggleAll">Deseleccionar todo</button>
+    </div>
+
+    <ul class="results" id="resultsList"></ul>
+
+    <div id="emptyState" class="empty" hidden>
+      <strong>Sin resultados todavía</strong>
+      Escribe el nombre de un ilustrador de Pokémon TCG y pulsa Buscar.
+    </div>
   </div>
 
-  <div id="toolbar" class="toolbar" hidden>
-    <span id="resultSummary"></span>
-    <button type="button" id="toggleAll">Deseleccionar todo</button>
+  <!-- VISTA: QUIERO -->
+  <div class="view" id="viewWants" hidden>
+    <div class="toolbar">
+      <span id="wantsSummary">0 cartas</span>
+      <button type="button" class="btn-small" id="exportWantsBtn">Exportar lista</button>
+    </div>
+    <ul class="results" id="wantsListEl"></ul>
+    <div id="wantsEmpty" class="empty">
+      <strong>Tu lista de deseos está vacía</strong>
+      Busca un artista y guarda cartas aquí con el botón ♥.
+    </div>
   </div>
 
-  <ul class="results" id="resultsList"></ul>
-
-  <div id="emptyState" class="empty" hidden>
-    <strong>Sin resultados todavía</strong>
-    Escribe el nombre de un ilustrador de Pokémon TCG y pulsa Buscar.
+  <!-- VISTA: TENGO -->
+  <div class="view" id="viewOwned" hidden>
+    <div class="toolbar">
+      <span id="ownedSummary">0 cartas</span>
+      <button type="button" class="btn-small" id="exportOwnedBtn">Exportar lista</button>
+    </div>
+    <ul class="results" id="ownedListEl"></ul>
+    <div id="ownedEmpty" class="empty">
+      <strong>Todavía no tienes cartas guardadas aquí</strong>
+      Busca un artista y marca las que ya tienes con el botón ✓.
+    </div>
   </div>
 </div>
 
 <footer id="footerBar" hidden>
   <div class="footer-inner">
-    <span class="count"><strong id="selCount">0</strong> seleccionadas</span>
-    <button type="button" class="btn-primary" id="exportBtn">Generar lista</button>
+    <span class="count"><strong id="selCount">0</strong> selec.</span>
+    <div class="footer-actions">
+      <button type="button" class="btn-icon wants-icon" id="addWantsBtn" title="Guardar seleccionadas en Quiero">♥</button>
+      <button type="button" class="btn-icon owned-icon" id="addOwnedBtn" title="Guardar seleccionadas en Tengo">✓</button>
+      <button type="button" class="btn-primary" id="exportBtn" style="padding:0 14px;">Lista</button>
+    </div>
   </div>
 </footer>
 
 <dialog id="exportDialog">
   <div class="dialog-body">
-    <h2>Tu lista de búsqueda</h2>
-    <p>Cada línea trae el nombre, la expansión y el número exacto de carta. Búscalos uno a uno en Cardmarket (por nombre + número) para encontrar la edición concreta — el importador masivo de wantslist solo busca por nombre y no distingue entre ediciones.</p>
+    <h2 id="exportDialogTitle">Tu lista</h2>
+    <p>Cada línea trae el nombre y el número exacto de carta — búscalos así en Cardmarket para encontrar la edición concreta.</p>
     <textarea id="exportText" readonly></textarea>
     <div class="copied-flash" id="copiedFlash"></div>
     <div class="dialog-actions">
@@ -432,6 +549,7 @@ const selCountEl = document.getElementById('selCount');
 const toggleAllBtn = document.getElementById('toggleAll');
 const exportBtn = document.getElementById('exportBtn');
 const exportDialog = document.getElementById('exportDialog');
+const exportDialogTitle = document.getElementById('exportDialogTitle');
 const exportText = document.getElementById('exportText');
 const copyBtn = document.getElementById('copyBtn');
 const closeDialog = document.getElementById('closeDialog');
@@ -440,6 +558,23 @@ const filtersEl = document.getElementById('filters');
 const supertypeChips = document.getElementById('supertypeChips');
 const fullArtOnlyCheckbox = document.getElementById('fullArtOnly');
 const apiKeyInput = document.getElementById('apiKeyInput');
+const tabRow = document.getElementById('tabRow');
+const searchControls = document.getElementById('searchControls');
+const viewSearch = document.getElementById('viewSearch');
+const viewWants = document.getElementById('viewWants');
+const viewOwned = document.getElementById('viewOwned');
+const wantsCountEl = document.getElementById('wantsCount');
+const ownedCountEl = document.getElementById('ownedCount');
+const wantsListEl = document.getElementById('wantsListEl');
+const ownedListEl = document.getElementById('ownedListEl');
+const wantsSummary = document.getElementById('wantsSummary');
+const ownedSummary = document.getElementById('ownedSummary');
+const wantsEmpty = document.getElementById('wantsEmpty');
+const ownedEmpty = document.getElementById('ownedEmpty');
+const addWantsBtn = document.getElementById('addWantsBtn');
+const addOwnedBtn = document.getElementById('addOwnedBtn');
+const exportWantsBtn = document.getElementById('exportWantsBtn');
+const exportOwnedBtn = document.getElementById('exportOwnedBtn');
 
 // Si prefieres no pegar la clave cada vez, puedes escribirla aquí directamente (es tu copia local del archivo):
 const HARDCODED_API_KEY = '';
@@ -447,6 +582,74 @@ const HARDCODED_API_KEY = '';
 let rawCards = [];
 let uniqueCards = [];
 let activeSupertype = 'Todos';
+let currentView = 'search';
+
+/* ---------- Listas guardadas en local (Quiero / Tengo) ---------- */
+const LS_WANTS = 'fichaArtista_wants_v1';
+const LS_OWNED = 'fichaArtista_owned_v1';
+
+function loadList(key){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveList(key, arr){
+  try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(e){ /* almacenamiento no disponible */ }
+}
+
+let wantsList = loadList(LS_WANTS);
+let ownedList = loadList(LS_OWNED);
+
+function cardId(card){
+  return [card.name, card.setName, card.number, card.hasFullArt ? 'fa' : 'n'].join('|');
+}
+function isInList(list, card){
+  const id = cardId(card);
+  return list.some(c => cardId(c) === id);
+}
+function addCardTo(which, card){
+  const arr = which === 'wants' ? wantsList : ownedList;
+  if(!isInList(arr, card)){
+    arr.push(card);
+    saveList(which === 'wants' ? LS_WANTS : LS_OWNED, arr);
+  }
+}
+function removeCardFrom(which, card){
+  if(which === 'wants'){
+    wantsList = wantsList.filter(c => cardId(c) !== cardId(card));
+    saveList(LS_WANTS, wantsList);
+  } else {
+    ownedList = ownedList.filter(c => cardId(c) !== cardId(card));
+    saveList(LS_OWNED, ownedList);
+  }
+}
+function updateTabCounts(){
+  wantsCountEl.textContent = wantsList.length;
+  ownedCountEl.textContent = ownedList.length;
+}
+
+/* ---------- Vistas / pestañas ---------- */
+function showView(view){
+  currentView = view;
+  viewSearch.hidden = view !== 'search';
+  viewWants.hidden = view !== 'wants';
+  viewOwned.hidden = view !== 'owned';
+  searchControls.hidden = view !== 'search';
+  tabRow.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if(view === 'search'){
+    footerBar.hidden = uniqueCards.length === 0;
+  } else {
+    footerBar.hidden = true;
+  }
+  if(view === 'wants') renderSavedList('wants');
+  if(view === 'owned') renderSavedList('owned');
+}
+tabRow.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if(!btn) return;
+  showView(btn.dataset.view);
+});
 
 function setStatus(msg, isError){
   if(!msg){ statusEl.hidden = true; return; }
@@ -476,23 +679,19 @@ async function fetchAllCardsByArtist(artist){
           throw new Error('La API te ha limitado por demasiadas peticiones seguidas. Espera un minuto y vuelve a intentarlo' + (apiKey ? '.' : ', o añade una clave API gratuita para tener un límite más alto.'));
         }
         if(res.status >= 500 && attempt < 3){
-          await new Promise(r => setTimeout(r, attempt * 800)); // pequeña espera antes de reintentar
+          await new Promise(r => setTimeout(r, attempt * 800));
           continue;
         }
         const body = await res.text().catch(() => '');
         throw new Error(`La API respondió con error ${res.status}.` + (apiKey ? '' : ' Prueba a añadir una clave API gratuita de dev.pokemontcg.io: sin clave esta API es muy inestable ahora mismo.') + (body ? ` Detalle: ${body.slice(0,200)}` : ''));
       }catch(err){
         lastError = err;
-        // "Failed to fetch" = TypeError de red/CORS, no un error de la API con código de estado.
         const isNetworkFailure = err instanceof TypeError;
         if(isNetworkFailure && apiKey && isLocalFile && !warnedAboutKeyDrop){
-          // Probablemente CORS: al abrir el archivo como file://, añadir la cabecera de la clave
-          // hace que el navegador bloquee la petición antes de que llegue a la API.
-          // Reintentamos automáticamente sin la clave para que la búsqueda no se quede en nada.
           warnedAboutKeyDrop = true;
           apiKey = '';
           headers['X-Api-Key'] && delete headers['X-Api-Key'];
-          attempt = 0; // reinicia los intentos para esta página, ahora sin clave
+          attempt = 0;
           continue;
         }
         if(isNetworkFailure && attempt === 3){
@@ -510,7 +709,7 @@ async function fetchAllCardsByArtist(artist){
     all = all.concat(data);
     if(data.length < pageSize) break;
     page += 1;
-    if(page > 15) break; // salvaguarda razonable
+    if(page > 15) break;
   }
   return { cards: all, keyDropped: warnedAboutKeyDrop };
 }
@@ -534,7 +733,7 @@ function dedupeByName(cards){
   for(const c of cards){
     const fullArt = looksLikeFullArt(c);
     const key = c.name + '|' + (fullArt ? 'fa' : 'normal');
-    const releaseDate = c.set && c.set.releaseDate; // 'YYYY/MM/DD'
+    const releaseDate = c.set && c.set.releaseDate;
     if(!map.has(key)){
       map.set(key, {
         name: c.name,
@@ -552,7 +751,6 @@ function dedupeByName(cards){
       if(c.set && c.set.name && !entry.reprintSets.includes(c.set.name)){
         entry.reprintSets.push(c.set.name);
       }
-      // Si esta reedición es más antigua que la que teníamos guardada, la usamos como referencia
       if(releaseDate && (!entry.releaseDate || releaseDate < entry.releaseDate)){
         entry.releaseDate = releaseDate;
         entry.setName = c.set && c.set.name;
@@ -597,6 +795,19 @@ function cardRef(card){
   return (card.setName || 'Set desconocido') + ' · Nº ' + num + total;
 }
 
+function cardHTML(card, opts){
+  const typeClass = card.supertype === 'Pokémon' ? 'type-pokemon'
+    : card.supertype === 'Trainer' ? 'type-trainer'
+    : card.supertype === 'Energy' ? 'type-energy' : '';
+  const reprintBadge = card.reprintSets && card.reprintSets.length > 1
+    ? `<span class="badge">${card.reprintSets.length} ediciones</span>` : '';
+  const fullArtBadge = card.hasFullArt ? `<span class="badge fullart">Full art*</span>` : '';
+  const ownedBadge = opts.showOwnedTag && isInList(ownedList, card) ? `<span class="badge owned">✓ La tienes</span>` : '';
+  const wantedBadge = opts.showWantedTag && isInList(wantsList, card) ? `<span class="badge wanted">♥ En tu lista</span>` : '';
+  const img = card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>';
+  return { typeClass, reprintBadge, fullArtBadge, ownedBadge, wantedBadge, img };
+}
+
 function renderResults(){
   resultsList.innerHTML = '';
   if(uniqueCards.length === 0){
@@ -610,25 +821,17 @@ function renderResults(){
   }
   emptyState.hidden = true;
   toolbar.hidden = false;
-  footerBar.hidden = false;
+  footerBar.hidden = currentView !== 'search';
   resultSummary.textContent = uniqueCards.length + ' cartas únicas encontradas';
 
   uniqueCards.forEach((card, idx) => {
     const li = document.createElement('li');
-    const typeClass = card.supertype === 'Pokémon' ? 'type-pokemon'
-      : card.supertype === 'Trainer' ? 'type-trainer'
-      : card.supertype === 'Energy' ? 'type-energy' : '';
+    const { typeClass, reprintBadge, fullArtBadge, ownedBadge, wantedBadge, img } = cardHTML(card, { showOwnedTag:true, showWantedTag:true });
     li.className = 'card ' + typeClass;
-    const reprintBadge = card.reprintSets.length > 1
-      ? `<span class="badge">${card.reprintSets.length} ediciones</span>`
-      : '';
-    const fullArtBadge = card.hasFullArt
-      ? `<span class="badge fullart">Full art*</span>`
-      : '';
     li.innerHTML = `
-      ${card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>'}
+      ${img}
       <div class="card-info">
-        <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}</div>
+        <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}${wantedBadge}${ownedBadge}</div>
         <div class="card-meta">${cardRef(card)}</div>
       </div>
       <input type="checkbox" data-idx="${idx}" checked>
@@ -636,6 +839,50 @@ function renderResults(){
     resultsList.appendChild(li);
   });
   updateSelectedCount();
+}
+
+function renderSavedList(which){
+  const list = which === 'wants' ? wantsList : ownedList;
+  const listEl = which === 'wants' ? wantsListEl : ownedListEl;
+  const summaryEl = which === 'wants' ? wantsSummary : ownedSummary;
+  const emptyEl = which === 'wants' ? wantsEmpty : ownedEmpty;
+  listEl.innerHTML = '';
+  summaryEl.textContent = list.length + (list.length === 1 ? ' carta' : ' cartas');
+  if(list.length === 0){
+    emptyEl.hidden = false;
+    listEl.hidden = true;
+    return;
+  }
+  emptyEl.hidden = true;
+  listEl.hidden = false;
+  list.forEach((card) => {
+    const li = document.createElement('li');
+    const { typeClass, reprintBadge, fullArtBadge, ownedBadge, wantedBadge, img } = cardHTML(card, {
+      showOwnedTag: which === 'wants',
+      showWantedTag: which === 'owned'
+    });
+    li.className = 'card ' + typeClass;
+    li.innerHTML = `
+      ${img}
+      <div class="card-info">
+        <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}${wantedBadge}${ownedBadge}</div>
+        <div class="card-meta">${cardRef(card)}</div>
+      </div>
+      <button type="button" class="remove-btn" data-id="${cardId(card)}">Quitar</button>
+    `;
+    listEl.appendChild(li);
+  });
+  listEl.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = list.find(c => cardId(c) === btn.dataset.id);
+      if(card){
+        removeCardFrom(which, card);
+        renderSavedList(which);
+        updateTabCounts();
+        if(currentView === 'search') renderResults();
+      }
+    });
+  });
 }
 
 function updateSelectedCount(){
@@ -688,16 +935,20 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-exportBtn.addEventListener('click', () => {
-  const boxes = resultsList.querySelectorAll('input[type="checkbox"]:checked');
-  const lines = Array.from(boxes).map(b => {
-    const card = uniqueCards[Number(b.dataset.idx)];
-    return `${card.name} — ${cardRef(card)}`;
-  });
-  exportText.value = lines.join('\n');
+function openExportDialog(title, cards){
+  exportDialogTitle.textContent = title;
+  exportText.value = cards.map(c => `${c.name} ${c.number || ''}`.trim()).join('\n');
   copiedFlash.textContent = '';
   exportDialog.showModal();
+}
+
+exportBtn.addEventListener('click', () => {
+  const boxes = resultsList.querySelectorAll('input[type="checkbox"]:checked');
+  const cards = Array.from(boxes).map(b => uniqueCards[Number(b.dataset.idx)]);
+  openExportDialog('Tu lista de búsqueda', cards);
 });
+exportWantsBtn.addEventListener('click', () => openExportDialog('Tu lista de Quiero', wantsList));
+exportOwnedBtn.addEventListener('click', () => openExportDialog('Tu lista de Tengo', ownedList));
 
 closeDialog.addEventListener('click', () => exportDialog.close());
 
@@ -711,6 +962,20 @@ copyBtn.addEventListener('click', async () => {
     copiedFlash.textContent = 'Copiado ✓';
   }
 });
+
+function bulkAddSelected(which){
+  const boxes = resultsList.querySelectorAll('input[type="checkbox"]:checked');
+  const cards = Array.from(boxes).map(b => uniqueCards[Number(b.dataset.idx)]);
+  if(cards.length === 0) return;
+  cards.forEach(c => addCardTo(which, c));
+  updateTabCounts();
+  renderResults();
+  setStatus(`${cards.length} carta(s) guardada(s) en ${which === 'wants' ? 'Quiero' : 'Tengo'}.`);
+}
+addWantsBtn.addEventListener('click', () => bulkAddSelected('wants'));
+addOwnedBtn.addEventListener('click', () => bulkAddSelected('owned'));
+
+updateTabCounts();
 
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   window.addEventListener('load', () => {
