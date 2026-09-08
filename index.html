@@ -761,16 +761,27 @@ async function ensureIllustratorsLoaded(){
 }
 
 async function preloadImage(url, timeoutMs = 7000){
-  return new Promise((resolve) => {
-    if(!url){ resolve(false); return; }
+  return new Promise((resolve, reject) => {
+    if(!url){ reject(); return; }
     const img = new Image();
     let done = false;
-    const finish = (ok) => { if(!done){ done = true; resolve(ok); } };
+    const finish = (ok) => { if(done) return; done = true; ok ? resolve(url) : reject(); };
     img.onload = () => finish(true);
     img.onerror = () => finish(false);
     img.src = url;
     setTimeout(() => finish(false), timeoutMs);
   });
+}
+
+// Prueba muchas imágenes a la vez (en paralelo) y se queda con la PRIMERA que cargue de verdad.
+// Si probábamos pocas candidatas y ninguna tenía imagen real, siempre fallaba igual con ese artista.
+async function firstWorkingImage(urls){
+  if(urls.length === 0) return null;
+  try{
+    return await Promise.any(urls.map(url => preloadImage(url)));
+  }catch(e){
+    return null; // ninguna de las candidatas cargó
+  }
 }
 
 async function loadMoreArtists(){
@@ -786,18 +797,15 @@ async function loadMoreArtists(){
     const nextBatch = allIllustrators.slice(discoverShownCount, discoverShownCount + DISCOVER_PAGE_SIZE);
     const fetchSample = async (name, attempt = 1) => {
       try{
-        // Pedimos varias candidatas y probamos a precargar cada imagen de verdad (Image()),
-        // no solo a que la API diga que existe la URL — nos quedamos con la primera que cargue.
-        const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(name)}&pagination:itemsPerPage=6`);
+        // Pedimos bastantes candidatas (hasta 20) y las probamos todas a la vez.
+        const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(name)}&pagination:itemsPerPage=20`);
         if(!res.ok) throw new Error('http ' + res.status);
         const arr = await res.json();
         const candidates = (Array.isArray(arr) ? arr : [])
           .filter(c => c && c.image)
           .map(c => c.image + '/low.webp');
-        for(const url of candidates){
-          if(await preloadImage(url)) return { name, image: url };
-        }
-        return { name, image: null };
+        const image = await firstWorkingImage(candidates);
+        return { name, image };
       }catch(e){
         if(attempt < 2){
           await new Promise(r => setTimeout(r, 400));
@@ -806,7 +814,7 @@ async function loadMoreArtists(){
         return { name, image: null };
       }
     };
-    const results = await mapWithConcurrency(nextBatch, 6, fetchSample);
+    const results = await mapWithConcurrency(nextBatch, 5, fetchSample);
     discoverEmpty.hidden = true; // ya tenemos el lote completo con las imágenes verificadas, ahora sí lo mostramos
     results.forEach(r => {
       const li = document.createElement('li');
