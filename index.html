@@ -772,16 +772,24 @@ async function loadMoreArtists(){
     await ensureIllustratorsLoaded();
     discoverEmpty.hidden = true;
     const nextBatch = allIllustrators.slice(discoverShownCount, discoverShownCount + DISCOVER_PAGE_SIZE);
-    const results = await mapWithConcurrency(nextBatch, 8, async (name) => {
+    const fetchSample = async (name, attempt = 1) => {
       try{
-        const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(name)}&pagination:itemsPerPage=1`);
+        // Pedimos varias (no solo 1) y nos quedamos con la primera que sí traiga imagen,
+        // porque a veces la primera carta de la lista no tiene la imagen procesada todavía.
+        const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(name)}&pagination:itemsPerPage=5`);
+        if(!res.ok) throw new Error('http ' + res.status);
         const arr = await res.json();
-        const first = Array.isArray(arr) ? arr[0] : null;
-        return { name, image: first && first.image ? first.image + '/low.webp' : null };
+        const withImage = Array.isArray(arr) ? arr.find(c => c && c.image) : null;
+        return { name, image: withImage ? withImage.image + '/low.webp' : null };
       }catch(e){
+        if(attempt < 2){
+          await new Promise(r => setTimeout(r, 400));
+          return fetchSample(name, attempt + 1); // un reintento por si fue un fallo puntual de red
+        }
         return { name, image: null };
       }
-    });
+    };
+    const results = await mapWithConcurrency(nextBatch, 6, fetchSample);
     results.forEach(r => {
       const li = document.createElement('li');
       li.className = 'card';
@@ -940,7 +948,7 @@ const expandedArtist = { wants: null, owned: null };
 function groupByArtist(list){
   const map = new Map();
   list.forEach(card => {
-    const artist = card.artist || 'Artista desconocido';
+    const artist = card.artist || 'Sin artista guardado (cartas de antes de esta actualización)';
     if(!map.has(artist)) map.set(artist, []);
     map.get(artist).push(card);
   });
@@ -971,7 +979,7 @@ function renderSavedList(which){
   const expanded = expandedArtist[which];
 
   // Si el artista que estábamos viendo ya no tiene cartas guardadas, volvemos al listado de artistas
-  if(expanded && !list.some(c => (c.artist || 'Artista desconocido') === expanded)){
+  if(expanded && !list.some(c => (c.artist || 'Sin artista guardado (cartas de antes de esta actualización)') === expanded)){
     expandedArtist[which] = null;
   }
 
@@ -1005,7 +1013,7 @@ function renderSavedList(which){
   // Vista expandida: solo las cartas del artista seleccionado
   exportBtnEl.hidden = false;
   const artistName = expandedArtist[which];
-  const cardsOfArtist = list.filter(c => (c.artist || 'Artista desconocido') === artistName);
+  const cardsOfArtist = list.filter(c => (c.artist || 'Sin artista guardado (cartas de antes de esta actualización)') === artistName);
   summaryEl.innerHTML = `<button type="button" id="backTo${which}" style="background:none;color:var(--accent);font-weight:600;padding:0;">‹ Artistas</button> · ${artistName}`;
   cardsOfArtist.forEach((card) => {
     const li = document.createElement('li');
@@ -1115,11 +1123,11 @@ exportBtn.addEventListener('click', () => {
   openExportDialog('Tu lista de búsqueda', cards);
 });
 exportWantsBtn.addEventListener('click', () => {
-  const cards = wantsList.filter(c => (c.artist || 'Artista desconocido') === expandedArtist.wants);
+  const cards = wantsList.filter(c => (c.artist || 'Sin artista guardado (cartas de antes de esta actualización)') === expandedArtist.wants);
   openExportDialog('Quiero — ' + expandedArtist.wants, cards);
 });
 exportOwnedBtn.addEventListener('click', () => {
-  const cards = ownedList.filter(c => (c.artist || 'Artista desconocido') === expandedArtist.owned);
+  const cards = ownedList.filter(c => (c.artist || 'Sin artista guardado (cartas de antes de esta actualización)') === expandedArtist.owned);
   openExportDialog('Tengo — ' + expandedArtist.owned, cards);
 });
 
