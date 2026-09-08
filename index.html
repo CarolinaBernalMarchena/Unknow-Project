@@ -88,15 +88,16 @@
     background:none;
     font-family:'Fredoka',sans-serif;
     font-weight:600;
-    font-size:0.82rem;
+    font-size:0.72rem;
     color:var(--ink-soft);
-    padding:9px 6px;
+    padding:9px 3px;
     border-radius:var(--radius) var(--radius) 0 0;
     border-bottom:3px solid transparent;
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:5px;
+    gap:3px;
+    white-space:nowrap;
   }
   .tab-btn.active{
     color:var(--accent-dark);
@@ -189,12 +190,12 @@
     font-size:0.82rem;
     padding:4px;
   }
-  .toolbar .btn-small{
+  .btn-small{
     background:var(--accent);
     color:#fff;
     font-weight:600;
     font-size:0.8rem;
-    padding:6px 12px;
+    padding:8px 16px;
     border-radius:20px;
     flex-shrink:0;
   }
@@ -432,6 +433,7 @@
     <p class="subtitle">Busca por ilustrador, guarda lo que quieres y lo que ya tienes — todo se queda guardado en este dispositivo.</p>
     <nav class="tab-row" id="tabRow">
       <button type="button" class="tab-btn active" data-view="search">🔍 Buscar</button>
+      <button type="button" class="tab-btn" data-view="discover">🎨 Descubrir</button>
       <button type="button" class="tab-btn" data-view="wants">♥ Quiero <span class="tab-count" id="wantsCount">0</span></button>
       <button type="button" class="tab-btn" data-view="owned">✓ Tengo <span class="tab-count" id="ownedCount">0</span></button>
     </nav>
@@ -464,7 +466,7 @@
 
     <div id="toolbar" class="toolbar" hidden>
       <span id="resultSummary"></span>
-      <button type="button" class="link-btn" id="toggleAll">Deseleccionar todo</button>
+      <button type="button" class="link-btn" id="toggleAll">Seleccionar todo</button>
     </div>
 
     <p id="dataGapNote" class="fullart-note" style="padding:0 16px 8px;" hidden>
@@ -477,6 +479,21 @@
     <div id="emptyState" class="empty" hidden>
       <strong>Sin resultados todavía</strong>
       Escribe el nombre de un ilustrador de Pokémon TCG y pulsa Buscar.
+    </div>
+  </div>
+
+  <!-- VISTA: DESCUBRIR -->
+  <div class="view" id="viewDiscover" hidden>
+    <div class="toolbar">
+      <span id="discoverSummary">Explora artistas y su arte</span>
+    </div>
+    <ul class="results" id="discoverList"></ul>
+    <div id="discoverEmpty" class="empty" hidden>
+      <strong>Cargando artistas…</strong>
+      Esto puede tardar un poco la primera vez.
+    </div>
+    <div style="padding:8px 16px 20px;text-align:center;">
+      <button type="button" class="btn-small" id="loadMoreArtistsBtn" hidden>Cargar más artistas</button>
     </div>
   </div>
 
@@ -573,6 +590,10 @@ const addWantsBtn = document.getElementById('addWantsBtn');
 const addOwnedBtn = document.getElementById('addOwnedBtn');
 const exportWantsBtn = document.getElementById('exportWantsBtn');
 const exportOwnedBtn = document.getElementById('exportOwnedBtn');
+const viewDiscover = document.getElementById('viewDiscover');
+const discoverList = document.getElementById('discoverList');
+const discoverEmpty = document.getElementById('discoverEmpty');
+const loadMoreArtistsBtn = document.getElementById('loadMoreArtistsBtn');
 
 
 let rawCards = [];
@@ -629,6 +650,7 @@ function updateTabCounts(){
 function showView(view){
   currentView = view;
   viewSearch.hidden = view !== 'search';
+  viewDiscover.hidden = view !== 'discover';
   viewWants.hidden = view !== 'wants';
   viewOwned.hidden = view !== 'owned';
   searchControls.hidden = view !== 'search';
@@ -640,6 +662,7 @@ function showView(view){
   }
   if(view === 'wants') renderSavedList('wants');
   if(view === 'owned') renderSavedList('owned');
+  if(view === 'discover' && discoverList.children.length === 0) loadMoreArtists();
 }
 tabRow.addEventListener('click', (e) => {
   const btn = e.target.closest('.tab-btn');
@@ -695,6 +718,7 @@ async function fetchAllCardsByArtist(artist){
     name: c.name,
     number: c.localId,
     rarity: c.rarity,
+    artist: c.illustrator,
     supertype: normalizeSupertype(c.category),
     images: { small: c.image ? c.image + '/low.webp' : null },
     set: {
@@ -707,6 +731,82 @@ async function fetchAllCardsByArtist(artist){
 
 
 const FULLART_RARITY_HINTS = ['ultra','secret','rainbow','hyper','illustration','amazing','trainer gallery','shiny'];
+
+async function mapWithConcurrency(items, limit, fn){
+  const results = new Array(items.length);
+  let idx = 0;
+  async function worker(){
+    while(idx < items.length){
+      const i = idx++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+/* ---------- Vista Descubrir: listado de artistas ---------- */
+let allIllustrators = null;
+let discoverShownCount = 0;
+const DISCOVER_PAGE_SIZE = 24;
+
+async function ensureIllustratorsLoaded(){
+  if(allIllustrators) return;
+  const res = await fetch(`${API_BASE}/illustrators`);
+  const raw = await res.json();
+  allIllustrators = raw
+    .map(x => typeof x === 'string' ? x : (x && (x.name || x.id)))
+    .filter(Boolean)
+    .sort((a,b) => a.localeCompare(b, 'es'));
+}
+
+async function loadMoreArtists(){
+  const isFirstLoad = discoverList.children.length === 0;
+  if(isFirstLoad){
+    discoverEmpty.hidden = false;
+    discoverEmpty.innerHTML = '<strong>Cargando artistas…</strong>Esto puede tardar unos segundos la primera vez.';
+  }
+  loadMoreArtistsBtn.disabled = true;
+  loadMoreArtistsBtn.textContent = 'Cargando…';
+  try{
+    await ensureIllustratorsLoaded();
+    discoverEmpty.hidden = true;
+    const nextBatch = allIllustrators.slice(discoverShownCount, discoverShownCount + DISCOVER_PAGE_SIZE);
+    const results = await mapWithConcurrency(nextBatch, 8, async (name) => {
+      try{
+        const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(name)}&pagination:itemsPerPage=1`);
+        const arr = await res.json();
+        const first = Array.isArray(arr) ? arr[0] : null;
+        return { name, image: first && first.image ? first.image + '/low.webp' : null };
+      }catch(e){
+        return { name, image: null };
+      }
+    });
+    results.forEach(r => {
+      const li = document.createElement('li');
+      li.className = 'card';
+      li.style.cursor = 'pointer';
+      const img = r.image ? `<img src="${r.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>';
+      li.innerHTML = `${img}<div class="card-info"><div class="card-name">${r.name}</div></div><span style="color:var(--ink-soft);font-size:1.3rem;">›</span>`;
+      li.addEventListener('click', () => {
+        artistInput.value = r.name;
+        showView('search');
+        form.requestSubmit();
+      });
+      discoverList.appendChild(li);
+    });
+    discoverShownCount += nextBatch.length;
+    loadMoreArtistsBtn.hidden = discoverShownCount >= allIllustrators.length;
+  }catch(err){
+    discoverEmpty.hidden = false;
+    discoverEmpty.innerHTML = '<strong>No se pudo cargar la lista de artistas</strong>Comprueba tu conexión e inténtalo de nuevo.';
+  }finally{
+    loadMoreArtistsBtn.disabled = false;
+    loadMoreArtistsBtn.textContent = 'Cargar más artistas';
+    if(allIllustrators && discoverShownCount < allIllustrators.length) loadMoreArtistsBtn.hidden = false;
+  }
+}
+loadMoreArtistsBtn.addEventListener('click', loadMoreArtists);
 
 function looksLikeFullArt(c){
   const rarity = (c.rarity || '').toLowerCase();
@@ -735,6 +835,7 @@ function dedupeByName(cards){
         printedTotal: c.set && c.set.printedTotal,
         releaseDate: releaseDate,
         supertype: c.supertype,
+        artist: c.artist,
         hasFullArt: fullArt,
         reprintSets: [c.set ? c.set.name : '']
       });
@@ -815,6 +916,7 @@ function renderResults(){
   toolbar.hidden = false;
   footerBar.hidden = currentView !== 'search';
   resultSummary.textContent = uniqueCards.length + ' cartas únicas encontradas';
+  toggleAllBtn.textContent = 'Seleccionar todo';
 
   uniqueCards.forEach((card, idx) => {
     const li = document.createElement('li');
@@ -826,11 +928,25 @@ function renderResults(){
         <div class="card-name">${card.name}${reprintBadge}${fullArtBadge}${wantedBadge}${ownedBadge}</div>
         <div class="card-meta">${cardRef(card)}</div>
       </div>
-      <input type="checkbox" data-idx="${idx}" checked>
+      <input type="checkbox" data-idx="${idx}">
     `;
     resultsList.appendChild(li);
   });
   updateSelectedCount();
+}
+
+const expandedArtist = { wants: null, owned: null };
+
+function groupByArtist(list){
+  const map = new Map();
+  list.forEach(card => {
+    const artist = card.artist || 'Artista desconocido';
+    if(!map.has(artist)) map.set(artist, []);
+    map.get(artist).push(card);
+  });
+  return Array.from(map.entries())
+    .map(([artist, cards]) => ({ artist, cards }))
+    .sort((a,b) => a.artist.localeCompare(b.artist, 'es'));
 }
 
 function renderSavedList(which){
@@ -838,16 +954,60 @@ function renderSavedList(which){
   const listEl = which === 'wants' ? wantsListEl : ownedListEl;
   const summaryEl = which === 'wants' ? wantsSummary : ownedSummary;
   const emptyEl = which === 'wants' ? wantsEmpty : ownedEmpty;
+  const exportBtnEl = which === 'wants' ? exportWantsBtn : exportOwnedBtn;
   listEl.innerHTML = '';
-  summaryEl.textContent = list.length + (list.length === 1 ? ' carta' : ' cartas');
+
   if(list.length === 0){
+    expandedArtist[which] = null;
+    summaryEl.textContent = '0 cartas';
     emptyEl.hidden = false;
     listEl.hidden = true;
+    exportBtnEl.hidden = true;
     return;
   }
   emptyEl.hidden = true;
   listEl.hidden = false;
-  list.forEach((card) => {
+
+  const expanded = expandedArtist[which];
+
+  // Si el artista que estábamos viendo ya no tiene cartas guardadas, volvemos al listado de artistas
+  if(expanded && !list.some(c => (c.artist || 'Artista desconocido') === expanded)){
+    expandedArtist[which] = null;
+  }
+
+  if(!expandedArtist[which]){
+    exportBtnEl.hidden = true;
+    const groups = groupByArtist(list);
+    summaryEl.textContent = groups.length + (groups.length === 1 ? ' artista' : ' artistas') + ' · ' + list.length + (list.length === 1 ? ' carta' : ' cartas');
+    groups.forEach(g => {
+      const li = document.createElement('li');
+      li.className = 'card';
+      li.style.cursor = 'pointer';
+      const thumb = g.cards[0];
+      const img = thumb.image ? `<img src="${thumb.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>';
+      li.innerHTML = `
+        ${img}
+        <div class="card-info">
+          <div class="card-name">${g.artist}</div>
+          <div class="card-meta">${g.cards.length} ${g.cards.length === 1 ? 'carta' : 'cartas'}</div>
+        </div>
+        <span style="color:var(--ink-soft);font-size:1.3rem;">›</span>
+      `;
+      li.addEventListener('click', () => {
+        expandedArtist[which] = g.artist;
+        renderSavedList(which);
+      });
+      listEl.appendChild(li);
+    });
+    return;
+  }
+
+  // Vista expandida: solo las cartas del artista seleccionado
+  exportBtnEl.hidden = false;
+  const artistName = expandedArtist[which];
+  const cardsOfArtist = list.filter(c => (c.artist || 'Artista desconocido') === artistName);
+  summaryEl.innerHTML = `<button type="button" id="backTo${which}" style="background:none;color:var(--accent);font-weight:600;padding:0;">‹ Artistas</button> · ${artistName}`;
+  cardsOfArtist.forEach((card) => {
     const li = document.createElement('li');
     const { typeClass, reprintBadge, fullArtBadge, ownedBadge, wantedBadge, img } = cardHTML(card, {
       showOwnedTag: which === 'wants',
@@ -863,6 +1023,10 @@ function renderSavedList(which){
       <button type="button" class="remove-btn" data-id="${cardId(card)}">Quitar</button>
     `;
     listEl.appendChild(li);
+  });
+  document.getElementById('backTo' + which).addEventListener('click', () => {
+    expandedArtist[which] = null;
+    renderSavedList(which);
   });
   listEl.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -950,8 +1114,14 @@ exportBtn.addEventListener('click', () => {
   const cards = Array.from(boxes).map(b => uniqueCards[Number(b.dataset.idx)]);
   openExportDialog('Tu lista de búsqueda', cards);
 });
-exportWantsBtn.addEventListener('click', () => openExportDialog('Tu lista de Quiero', wantsList));
-exportOwnedBtn.addEventListener('click', () => openExportDialog('Tu lista de Tengo', ownedList));
+exportWantsBtn.addEventListener('click', () => {
+  const cards = wantsList.filter(c => (c.artist || 'Artista desconocido') === expandedArtist.wants);
+  openExportDialog('Quiero — ' + expandedArtist.wants, cards);
+});
+exportOwnedBtn.addEventListener('click', () => {
+  const cards = ownedList.filter(c => (c.artist || 'Artista desconocido') === expandedArtist.owned);
+  openExportDialog('Tengo — ' + expandedArtist.owned, cards);
+});
 
 closeDialog.addEventListener('click', () => exportDialog.close());
 
