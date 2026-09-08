@@ -440,19 +440,7 @@
         <input type="text" id="artistInput" placeholder="Nombre del ilustrador, ej. Yuka Morii" autocomplete="off">
         <button type="submit" class="btn-primary" id="searchBtn">Buscar</button>
       </form>
-      <details style="margin-top:10px;">
-        <summary style="font-size:0.8rem;color:var(--ink-soft);cursor:pointer;">Clave API opcional (recomendable, evita errores 500)</summary>
-        <div style="margin-top:8px;">
-          <input type="text" id="apiKeyInput" placeholder="Pega aquí tu X-Api-Key de dev.pokemontcg.io" autocomplete="off" style="width:100%;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--ink-soft);margin-top:8px;">
-            <input type="checkbox" id="rememberKeyCheckbox" style="width:16px;height:16px;">
-            Recordar esta clave en este dispositivo
-          </label>
-          <p style="font-size:0.74rem;color:var(--ink-soft);margin:6px 0 0;line-height:1.4;">
-            Gratis en <strong>dev.pokemontcg.io</strong>. Si marcas la casilla, la clave se guarda solo en el almacenamiento de este navegador (igual que tus listas de Quiero/Tengo) — nunca se sube a GitHub ni queda visible en el código. <strong>No escribas la clave directamente en este archivo</strong> si lo vas a subir a un repositorio público: quedaría visible para cualquiera.
-          </p>
-        </div>
-      </details>
+      <p style="font-size:0.74rem;color:var(--ink-soft);margin:8px 0 0;">Sin clave API, sin registro — busca directamente.</p>
     </div>
   </header>
 
@@ -478,6 +466,11 @@
       <span id="resultSummary"></span>
       <button type="button" class="link-btn" id="toggleAll">Deseleccionar todo</button>
     </div>
+
+    <p id="dataGapNote" class="fullart-note" style="padding:0 16px 8px;" hidden>
+      ¿Aun así falta alguna carta? Compruébalo en
+      <a id="pkmncardsLink" href="#" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">pkmncards.com ↗</a>
+    </p>
 
     <ul class="results" id="resultsList"></ul>
 
@@ -539,13 +532,15 @@
 </dialog>
 
 <script>
-const API_BASE = 'https://api.pokemontcg.io/v2/cards';
+const API_BASE = 'https://api.tcgdex.net/v2/en';
 const form = document.getElementById('searchForm');
 const artistInput = document.getElementById('artistInput');
 const searchBtn = document.getElementById('searchBtn');
 const statusEl = document.getElementById('status');
 const toolbar = document.getElementById('toolbar');
 const resultSummary = document.getElementById('resultSummary');
+const dataGapNote = document.getElementById('dataGapNote');
+const pkmncardsLink = document.getElementById('pkmncardsLink');
 const resultsList = document.getElementById('resultsList');
 const emptyState = document.getElementById('emptyState');
 const footerBar = document.getElementById('footerBar');
@@ -561,8 +556,6 @@ const copiedFlash = document.getElementById('copiedFlash');
 const filtersEl = document.getElementById('filters');
 const supertypeChips = document.getElementById('supertypeChips');
 const fullArtOnlyCheckbox = document.getElementById('fullArtOnly');
-const apiKeyInput = document.getElementById('apiKeyInput');
-const rememberKeyCheckbox = document.getElementById('rememberKeyCheckbox');
 const tabRow = document.getElementById('tabRow');
 const searchControls = document.getElementById('searchControls');
 const viewSearch = document.getElementById('viewSearch');
@@ -581,28 +574,6 @@ const addOwnedBtn = document.getElementById('addOwnedBtn');
 const exportWantsBtn = document.getElementById('exportWantsBtn');
 const exportOwnedBtn = document.getElementById('exportOwnedBtn');
 
-// Si prefieres no pegar la clave cada vez, marca "Recordar esta clave en este dispositivo":
-// se guarda solo en el localStorage de tu navegador (nunca se sube a ningún sitio).
-const LS_API_KEY = 'fichaArtista_apiKey_v1';
-{
-  const savedKey = localStorage.getItem(LS_API_KEY);
-  if(savedKey){
-    apiKeyInput.value = savedKey;
-    rememberKeyCheckbox.checked = true;
-  }
-}
-rememberKeyCheckbox.addEventListener('change', () => {
-  if(!rememberKeyCheckbox.checked){
-    localStorage.removeItem(LS_API_KEY);
-  } else if(apiKeyInput.value.trim()){
-    localStorage.setItem(LS_API_KEY, apiKeyInput.value.trim());
-  }
-});
-apiKeyInput.addEventListener('input', () => {
-  if(rememberKeyCheckbox.checked){
-    localStorage.setItem(LS_API_KEY, apiKeyInput.value.trim());
-  }
-});
 
 let rawCards = [];
 let uniqueCards = [];
@@ -684,60 +655,56 @@ function setStatus(msg, isError){
 }
 
 async function fetchAllCardsByArtist(artist){
-  let all = [];
-  let page = 1;
-  const pageSize = 100;
-  let apiKey = (apiKeyInput.value || '').trim();
-  const isLocalFile = location.protocol === 'file:';
-  let warnedAboutKeyDrop = false;
-  while(true){
-    const q = encodeURIComponent('artist:"' + artist + '"');
-    const url = `${API_BASE}?q=${q}&pageSize=${pageSize}&page=${page}&orderBy=name`;
-    const headers = apiKey ? { 'X-Api-Key': apiKey } : {};
-
-    let res, lastError;
-    for(let attempt = 1; attempt <= 3; attempt++){
-      try{
-        res = await fetch(url, { headers });
-        if(res.ok) break;
-        if(res.status === 429){
-          throw new Error('La API te ha limitado por demasiadas peticiones seguidas. Espera un minuto y vuelve a intentarlo' + (apiKey ? '.' : ', o añade una clave API gratuita para tener un límite más alto.'));
-        }
-        if(res.status >= 500 && attempt < 3){
-          await new Promise(r => setTimeout(r, attempt * 800));
-          continue;
-        }
-        const body = await res.text().catch(() => '');
-        throw new Error(`La API respondió con error ${res.status}.` + (apiKey ? '' : ' Prueba a añadir una clave API gratuita de dev.pokemontcg.io: sin clave esta API es muy inestable ahora mismo.') + (body ? ` Detalle: ${body.slice(0,200)}` : ''));
-      }catch(err){
-        lastError = err;
-        const isNetworkFailure = err instanceof TypeError;
-        if(isNetworkFailure && apiKey && isLocalFile && !warnedAboutKeyDrop){
-          warnedAboutKeyDrop = true;
-          apiKey = '';
-          headers['X-Api-Key'] && delete headers['X-Api-Key'];
-          attempt = 0;
-          continue;
-        }
-        if(isNetworkFailure && attempt === 3){
-          throw new Error('No se pudo conectar con la API ("Failed to fetch"). Suele ser un bloqueo de CORS o falta de conexión. Si estás usando una clave API desde el archivo abierto en local, prueba sin clave, o aloja el archivo en un servidor con https.');
-        }
-        if(err.message && (err.message.includes('límite') || err.message.includes('inestable'))) throw err;
-        if(attempt === 3) throw err;
-      }
+  let briefs;
+  try{
+    const res = await fetch(`${API_BASE}/cards?illustrator=${encodeURIComponent(artist)}`);
+    if(!res.ok) throw new Error(`La API respondió con error ${res.status}.`);
+    briefs = await res.json();
+  }catch(err){
+    if(err instanceof TypeError){
+      throw new Error('No se pudo conectar con la API ("Failed to fetch"). Comprueba tu conexión a internet e inténtalo de nuevo.');
     }
-    if(!res || !res.ok){
-      throw lastError || new Error('No se pudo contactar con la API.');
-    }
-    const json = await res.json();
-    const data = json.data || [];
-    all = all.concat(data);
-    if(data.length < pageSize) break;
-    page += 1;
-    if(page > 15) break;
+    throw err;
   }
-  return { cards: all, keyDropped: warnedAboutKeyDrop };
+  if(!Array.isArray(briefs) || briefs.length === 0) return [];
+
+  // La lista trae solo id/nombre/imagen — pedimos el detalle de cada carta (rareza, set, tipo) en paralelo, por lotes.
+  const detailed = [];
+  const concurrency = 8;
+  let idx = 0;
+  async function worker(){
+    while(idx < briefs.length){
+      const i = idx++;
+      try{
+        const res = await fetch(`${API_BASE}/cards/${briefs[i].id}`);
+        if(res.ok) detailed.push(await res.json());
+      }catch(e){ /* si una carta suelta falla, seguimos con el resto */ }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, briefs.length) }, worker));
+
+  const artistLower = artist.trim().toLowerCase();
+  const filtered = detailed.filter(c => (c.illustrator || '').toLowerCase().includes(artistLower));
+
+  const normalizeSupertype = (category) => {
+    if(category === 'Pokemon' || category === 'Pokémon') return 'Pokémon';
+    return category; // 'Trainer' | 'Energy'
+  };
+
+  return filtered.map(c => ({
+    name: c.name,
+    number: c.localId,
+    rarity: c.rarity,
+    supertype: normalizeSupertype(c.category),
+    images: { small: c.image ? c.image + '/low.webp' : null },
+    set: {
+      name: c.set && c.set.name,
+      printedTotal: c.set && c.set.cardCount && (c.set.cardCount.official || c.set.cardCount.total),
+      releaseDate: null
+    }
+  }));
 }
+
 
 const FULLART_RARITY_HINTS = ['ultra','secret','rainbow','hyper','illustration','amazing','trainer gallery','shiny'];
 
@@ -927,30 +894,41 @@ toggleAllBtn.addEventListener('click', () => {
   updateSelectedCount();
 });
 
+function slugifyArtistName(name){
+  return name
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const artist = artistInput.value.trim();
   if(!artist) return;
   searchBtn.disabled = true;
   searchBtn.textContent = 'Buscando…';
-  setStatus('Consultando cartas de "' + artist + '"…');
+  setStatus('Consultando cartas de "' + artist + '"… puede tardar unos segundos si el artista tiene muchas.');
   filtersEl.hidden = true;
   toolbar.hidden = true;
   footerBar.hidden = true;
   emptyState.hidden = true;
+  dataGapNote.hidden = true;
   resultsList.innerHTML = '';
   try{
-    const result = await fetchAllCardsByArtist(artist);
-    rawCards = result.cards;
+    rawCards = await fetchAllCardsByArtist(artist);
     activeSupertype = 'Todos';
     supertypeChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.supertype === 'Todos'));
     fullArtOnlyCheckbox.checked = false;
-    if(result.keyDropped){
-      setStatus('Nota: tu clave API no se pudo usar abriendo el archivo en local (bloqueo de CORS en file://), así que esta búsqueda se hizo sin ella. Aloja el archivo en un servidor con https para que la clave funcione.');
-    } else {
-      setStatus('');
-    }
+    setStatus('');
     if(rawCards.length > 0) filtersEl.hidden = false;
+    if(rawCards.length > 0){
+      pkmncardsLink.href = 'https://pkmncards.com/artist/' + slugifyArtistName(artist) + '/';
+      dataGapNote.hidden = false;
+    } else {
+      dataGapNote.hidden = true;
+    }
     applyFilters();
   }catch(err){
     setStatus(err.message || 'Ha ocurrido un error al consultar la API.', true);
