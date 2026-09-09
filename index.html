@@ -820,7 +820,9 @@ async function loadMoreArtists(){
       const li = document.createElement('li');
       li.className = 'card';
       li.style.cursor = 'pointer';
-      const img = r.image ? `<img src="${r.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>';
+      const img = r.image
+        ? `<img src="${r.image}" alt="" loading="lazy">`
+        : '<div class="card-img-placeholder" style="display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--ink-soft);text-align:center;padding:2px;">Sin imagen en la API</div>';
       li.innerHTML = `${img}<div class="card-info"><div class="card-name">${r.name}</div></div><span style="color:var(--ink-soft);font-size:1.3rem;">›</span>`;
       li.addEventListener('click', () => {
         artistInput.value = r.name;
@@ -878,12 +880,16 @@ function dedupeByName(cards){
       if(c.set && c.set.name && !entry.reprintSets.includes(c.set.name)){
         entry.reprintSets.push(c.set.name);
       }
-      if(releaseDate && (!entry.releaseDate || releaseDate < entry.releaseDate)){
-        entry.releaseDate = releaseDate;
+      const preferByDate = releaseDate && (!entry.releaseDate || releaseDate < entry.releaseDate);
+      // Si la edición que teníamos guardada no tiene imagen y esta reedición sí, nos pasamos a esta,
+      // aunque no sea "más antigua" — mejor mostrar cualquier imagen que un hueco en blanco.
+      const preferByImage = !entry.image && c.images && c.images.small;
+      if(preferByDate || preferByImage){
+        entry.releaseDate = releaseDate || entry.releaseDate;
         entry.setName = c.set && c.set.name;
         entry.number = c.number;
         entry.printedTotal = c.set && c.set.printedTotal;
-        entry.image = c.images && c.images.small;
+        entry.image = (c.images && c.images.small) || entry.image;
       }
     }
   }
@@ -931,7 +937,7 @@ function cardHTML(card, opts){
   const fullArtBadge = card.hasFullArt ? `<span class="badge fullart">Full art*</span>` : '';
   const ownedBadge = opts.showOwnedTag && isInList(ownedList, card) ? `<span class="badge owned">✓ La tienes</span>` : '';
   const wantedBadge = opts.showWantedTag && isInList(wantsList, card) ? `<span class="badge wanted">♥ En tu lista</span>` : '';
-  const img = card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder"></div>';
+  const img = card.image ? `<img src="${card.image}" alt="" loading="lazy">` : '<div class="card-img-placeholder" style="display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--ink-soft);text-align:center;padding:2px;">Sin imagen en la API</div>';
   return { typeClass, reprintBadge, fullArtBadge, ownedBadge, wantedBadge, img };
 }
 
