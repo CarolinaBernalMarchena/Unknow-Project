@@ -943,16 +943,22 @@ function cardHTML(card, opts){
 
 // Respaldo: si TCGdex no tiene la imagen de una carta, probamos a pedirla a pokemontcg.io
 // (otra API pública, no es scraping) — mejora silenciosa, si tampoco la tiene se queda el marcador.
+function normalizeCardNumber(n){
+  return (n || '').toString().trim().toLowerCase().replace(/^0+(?=\d)/, '');
+}
+
 async function fetchFallbackImage(card){
+  if(!card.number) return null; // sin número no podemos asegurar que sea la misma edición, mejor no arriesgar
   try{
-    const q = encodeURIComponent(`name:"${card.name}"`);
-    const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=15`);
+    const q = encodeURIComponent(`name:"${card.name}" number:"${card.number}"`);
+    const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=10`);
     if(!res.ok) return null;
     const json = await res.json();
-    const candidates = (json.data || []).filter(c => c.images && c.images.small);
-    if(candidates.length === 0) return null;
-    const exact = candidates.find(c => c.number === card.number);
-    return (exact || candidates[0]).images.small;
+    const wanted = normalizeCardNumber(card.number);
+    const match = (json.data || []).find(c =>
+      c.images && c.images.small && normalizeCardNumber(c.number) === wanted
+    );
+    return match ? match.images.small : null; // sin coincidencia exacta de número, no arriesgamos a poner otra ilustración
   }catch(e){
     return null;
   }
